@@ -1,0 +1,37 @@
+name: Sync Upstream and Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天午夜运行
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  sync-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      
+      - name: Check upstream release
+        id: check_release
+        run: |
+          # 使用GitHub CLI或API获取上游最新release信息
+          # 比较版本并设置输出变量
+          echo "::set-output name=new_release::true"  # 示例输出
+      
+      - name: Sync upstream
+        if: steps.check_release.outputs.new_release == 'true'
+        run: |
+          git remote add upstream https://github.com/original_owner/original_repo.git
+          git fetch upstream
+          git checkout main
+          git merge upstream/main
+          git push origin main
+      
+      - name: Trigger build workflow
+        if: steps.check_release.outputs.new_release == 'true'
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: new-release-build
