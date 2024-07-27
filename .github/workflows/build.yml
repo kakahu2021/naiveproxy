@@ -51,14 +51,24 @@ jobs:
       - run: brew install ninja ccache
       - run: pip install setuptools
       - run: ./get-clang.sh
-      - run: |
-          # 修改构建脚本以生成静态库
+      - name: Modify build configuration
+        run: |
           sed -i '' 's/executable("naive")/static_library("naiveproxy")/' BUILD.gn
+          echo 'Building static library...'
+          cat BUILD.gn
       - run: ./build.sh
       - name: Package static library
         run: |
           mkdir -p output
-          cp out/Release/obj/libnaiveproxy.a output/${{ env.BUNDLE }}
+          find out -name "*.a" -print
+          if [ -f out/Release/obj/libnaiveproxy.a ]; then
+            cp out/Release/obj/libnaiveproxy.a output/${{ env.BUNDLE }}
+          elif [ -f out/Release/libnaiveproxy.a ]; then
+            cp out/Release/libnaiveproxy.a output/${{ env.BUNDLE }}
+          else
+            echo "Error: Static library not found"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BUNDLE }}
