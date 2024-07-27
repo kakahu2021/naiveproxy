@@ -60,13 +60,30 @@ jobs:
       - name: Package static library
         run: |
           mkdir -p output
-          find out -name "*.a" -print
-          if [ -f out/Release/obj/libnaiveproxy.a ]; then
-            cp out/Release/obj/libnaiveproxy.a output/${{ env.BUNDLE }}
-          elif [ -f out/Release/libnaiveproxy.a ]; then
-            cp out/Release/libnaiveproxy.a output/${{ env.BUNDLE }}
+          cd out/Release/obj
+          
+          # Option 1: If libnaiveproxy.a exists, use it directly
+          if [ -f libnaiveproxy.a ]; then
+            cp libnaiveproxy.a ../../../output/${{ env.BUNDLE }}
           else
-            echo "Error: Static library not found"
+            # Option 2: Combine relevant .a files into one
+            echo "libnaiveproxy.a not found. Combining relevant libraries..."
+            ar -rcT libnaiveproxy_combined.a \
+              net/libnet.a \
+              net/libnet_nqe_proto.a \
+              net/liburi_template.a \
+              net/third_party/quiche/libnet_quic_proto.a \
+              net/third_party/quiche/libquiche.a \
+              url/liburl.a \
+              base/libbase.a
+            
+            cp libnaiveproxy_combined.a ../../../output/${{ env.BUNDLE }}
+          fi
+          
+          cd ../../../
+          
+          if [ ! -f output/${{ env.BUNDLE }} ]; then
+            echo "Error: Failed to create the combined static library"
             exit 1
           fi
       - uses: actions/upload-artifact@v4
